@@ -6,10 +6,27 @@
   register: nexus_url_result
   when:
   - nexus_url is not defined or nexus_url|trim == ''
+- name: "Look up Nexus tls settings"
+  command: >
+    oc get route {{ nexus_name | default('nexus') }} -n {{ nexus_namespace }} -o custom-columns=ROUTE:.spec.tls --no-headers
+  register: tls_result
+  when:
+  - nexus_url is not defined or nexus_url|trim == ''
 
+- name: "Set http_protocol to http by default"
+  set_fact:
+    http_protocol: "http"
+  when:
+  - nexus_url is not defined
+- name: "Set http_protocol for nexus_url"
+  set_fact:
+    http_protocol: "https"
+  when:
+  - nexus_url is not defined
+  - "'<none>' not in tls_result.stdout" 
 - name: "Set nexus_url Result"
   set_fact:
-    nexus_url: "{{ nexus_url_result.stdout }}"
+    nexus_url: "{{http_protocol}}://{{ nexus_url_result.stdout }}"
   when:
   - nexus_url is not defined or nexus_url|trim == ''
 
